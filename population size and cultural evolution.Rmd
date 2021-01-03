@@ -1,0 +1,322 @@
+            #ABM1: Demography and Cumulative Cultural Skill Evolution
+              
+
+Henrich's (2004) mathematical model of cultural evolution predicts that, with small effective population size, the loss of pre-existing cultural elements is more likely. This model has been used to examine the Tasmanian archaeological record where separation from mainland Australia was followed by a loss of technological repertoire diversity.The work of Kline and Boyd (2010) have found further evidence in support for the theoretical findings of this model in their analysis of varying degrees of interactivity between island cultures in Oceania and indices of their tool complexity. It has even been shown that tool repertoire diversity among wild orangutans (*Pongo pygmaeus*) is related to the interaction probability of individuals with overlapping ranges (van Schaik, 2003).
+
+Before we can test these predictions, we must first reproduce Henrich's (2004) formal mathematical model in ABM format.
+
+This tutorial proceeds by providing every detail about Henrich's formal model, and then showing how each step is incorporated, within module-by-module format, into the ABM architecture.
+
+
+**Formal Model**
+
+Henrich begins by assuming that a population of $N$ individuals each possess a behavioural or material skill composed of culturally acquired elements. This given skill for the ith individual within $N$ is measured by the variable $z_i$, such that each individual has a $z$ value. And, $\bar{z}$, the mean skill level of $N$, can either reflect the average continuous cultural trait value for a population, or the relative presence or absence of the discrete elements contributing to this skill trait amongst a population.
+
+The second key assumption of Henrich's (2004) model is that all individuals within $N$ exhibit biased psychological phenotypes, such that they each consistently attempt to socially learn and acquire the skill of the best performing individual, individual $h$, within $N$. The $z$ value of the best performing individual is indexed as $z_h$. The degree of this success bias $f$ for each individual i within $N$ is indexed as $f_i$.
+
+Thirdly, Henrich (2004) assumes that the social learning process is imperfect, due to compromised imitation fidelity, asocial learning experiments, errors, low memory fidelity etc. Nevertheless, if this combination of imperfect copying and fortuitous error averages out such that $\bar{z}$ is greater then $z_h$ at generation t, generations exceeding t+1 will exhibit a steady cumulative frame drag in the distribution of cultural skill $z$ scores. A new $\prime{z_h}$ is identified and as the process continues, culture ,$\bar{z}$, will ratchet up in complexity (the value of $\bar{z}$ increases) over generational time (Boyd and Richerson, 1985:chapter 8).
+
+Henrich's equation describing this process is derived from the Price (1970) equation, and reads as:
+
+$\Delta\bar{z} = Cov(f , z) + E(f\Delta z)$
+
+wherein $\Delta\bar{z}$ expresses the direction and average rate of change in $\bar{z}$ across generations. The second covariance term, $Cov(f , z)$, describes how skill, $z_i$, and success-biased social transmission, $f_i$, are positively correlated for each individual i within $N$, whereby high skill levels result in the individual's $z$ value being more likely to be imitated by following generations. The final term, $E(f\Delta z)$, describes Henrich's third assumption of imitation error and is analogous to mutation within Price's (1970) formula. Each imitation attempt is impacted by 1) inaccurate inference about the true value of $z_h$ due to transmission channel noise, and by 2) a high probability of obtaining a $z$ value less then that of $z_h$ due to skill complexity.
+
+In accordance with Henrich's second assumption, that each individual within $N$ will consistently attempt to copy $z_h$ (that is, $f_h = 1$), the first equation reduces to:
+
+$\Delta\bar{z} = z_h - \bar{z} + \Delta z_h$
+
+Which demonstrates that the change of $\bar{z}$ is determined by difference between the prior generation's average, $\bar{z}$, and the new generation's average, $z_h$, mediated by the effect of the new generation's imperfect imitation; $\Delta z_h$ 
+
+To generate the effect of Henrich's third assumption of inaccurate $z_h$ imitation, $\Delta z_h$, a formalisation of the social learning process is required. Here, Henrich specifies that each individual within $N$ at generation t+1 will sample a Gumbel probability distribution (a.k.a. Generalised Extreme Value type-1 distribution) with the mode $m = z_h - \Alpha$ and the dispersion $\Beta$.
+
+Here is a brief look at this distribution below:
+
+```{r}
+
+library(extRemes)  #You will require these packages.
+library(logspline)
+
+top = 5 #This is the z_h value
+
+alpha = 2 #Alpha parameter for the mode
+
+mode = top - alpha #new location of the Gumbel mode due to information loss 
+
+n = 100 #population size
+
+beta = 1 #Beta parameter for the dispersion of the data.
+
+x = revd(n,loc=mode,scale=beta,shape=0) #generates n random variables from a gumbel distribution. Shape = 0 specifies the use of the Gumbel distribution from the GEV family of distributions.
+
+hist(x,prob=T,xlab="Imitator's z_i",main="Gumbel Distribution (Parameters: alpha = -2, beta = 1, N = 100",ylab="z_i Frequency",font=2,family="serif",font.lab=2,cex.lab=1.5)
+plot(logspline(x),add=T)
+abline(v=5, col="red", lwd=3, lty=2) #This is the z_h value.
+
+```
+
+From the above example, it is clear that there is a low probability that the ith individual will obtain a $z_i$ value greater than $z_h$. This is reflective of the rarity of fortuitous error or asocial innovation of a skill technique within the dynamics of cultural evolution. Nevertheless, it is also clear that as a population size, $N$, increases, the chance of sampling from the positive tail end of the distribution and producing a higher $\prime{z_h}$ value increases. This fact can be approximated with the following equation:
+
+$\Delta \bar{z} = -\alpha + \beta(\epsilon + \ln(N))$
+
+wherein $\epsilon$ represents Euler's gamma constant, $\epsilon \approx 0.577$, which, along with the natural logarithm, $\ln$, of the population size, $N$, approximates the highest values achievable within a sample size $N$ of the Gumbel distribution. Here, the $-\alpha$ term works against the process of cumulative cultural evolution, as the low imitative and inferential processing fidelity that the term attempts to capture reduces the rate of, and can even reverse the direction of, $\Delta \bar{z}$. The term $\beta(\epsilon + \ln(N))$ captures how, on average across generations, the effects of variation in inferences about learned skill components and population size combine in favour of the adaptive rate of cumulative cultural evolution. As such, the ratio of $\alpha/\beta$ (social learning error to the range of inferential differences) acts as a rate limiting factor on $\Delta \bar{z}$, with higher ratios acting as an index of cultural skill complexity that demands a larger size of $N$ for cumulative cultural evolution.
+
+Mathematically, the appropriate size of $N$ to maintain a material or behavioural cultural skill of given complexity $\alpha/\beta$ can be predicted as an $N^*$ threshold for cumulative cultural evolution with the equation:
+
+$N^* > e^{\left(\frac{\alpha}{\beta} - \epsilon\right)}$
+
+which is derived by setting $\Delta \bar{z} > 0$ and solving for $N$. This equation will be essential in testing ABM 1 for it's capacity to reproduce the results of Henrich's (2004) formal model, as it makes clear formal predictions about the threshold $N^*$ that should be observable even in agent-based modelling format.
+
+
+
+**ABM 1**
+
+Before we begin, the use of Generalised Extreme Value distributions, like the Gumbel, requires that we download and call upon the following two packages:
+
+```{r}
+#Required packages:
+
+library(extRemes) #For Gumbel distribution
+library(logspline) #For better visualising Gumbel in histograms
+
+```
+
+In emulating Henrich's (2004) model with an ABM, we are interested in tracking the cumulative cultural evolution of $\Delta\bar{z}$ for a population across $t_{max}$ generations. Each generation, $N$ individuals within a given population are replaced by another set of $N$ individuals. In accordance with Henrich's equation $\Delta\bar{z} = z_h - \bar{z} + \Delta z_h$, each new agent will attempt to copy the value of $z_h$ from the previous generation.That is, like Henrich's model, this ABM design assumes absolute biased transmission of the most effective skill available; $f_h = 1$.
+
+We will represent a population of $N$ agents as a data frame, in which, each row represents an agent, and where the column represents the value $z_i$ for each agent.
+
+In accordance with Henrich's third equation, $\Delta \bar{z} = -\alpha + \beta(\epsilon + \ln(N))$, we specify that each new agent of the new generation samples a Gumbel distribution with the mode $m = z_h - \alpha$ and the dispersion $\Beta$.This sampling will occur for each generation within $t_{max}$.
+
+Finally, the output is sent at each time step as the mean of the $z_i$ column to an output data frame that is representative of $\bar{z}$ in Henrich's terms. Each time step is denoted as t, spanning from time $t = 1$ (generation one) to $t_{max}$. Each generation could either denote life history generations or learning episodes.
+
+We begin by specifying some initial parameters: population size $N$ and $t_{max}$ generations:
+
+```{r}
+
+N = 100
+t_max = 100
+
+```
+
+Now check the global environment pane to the top right to see the assigned values to each of these variables.
+
+Next we initialise a population of $N$ agents within a data frame and sample from our first Gumbel distribution, such that generation $t = 1$ acquires their first $z$ skill scores.
+
+```{r}
+
+x = revd(N,loc=0,scale=1,shape=0) #Starting cultural skills of t = 1 population. loc is the mode of the Gumbel distribution, scale is the dispersion and shape=0 specifies that the generalised extereme value distribution that we desire is the Gumbel.
+
+agent <- as.data.frame(x, row.names = NULL, optional = FALSE) #Produce population of N agents, each with a z value sampled from the Gumbel distribution x.
+
+names = c("skill_z")
+names(agent) = names
+
+head(agent) #inspect first 6 agents from N.
+
+hist(x,prob=T,xlab="Beginner's z_i",main="Gumbel Distribution (Parameters: mode = 0, beta = 1, N = 100",ylab="z_i Frequency",font=2,family="serif",font.lab=2,cex.lab=1.5)
+plot(logspline(x),add=T)
+abline(v=0, col="red", lwd=3, lty=2) #This is the mode of 0.
+#Run this code to manually inspect the Gumbel distribution for t = 1.
+
+
+
+```
+
+Click on the green triangle to run the above code. By clicking on the left tab you will observe the data frame of agents. The column *skill_z* represents the $z$ value for each agent within the data frame *agent*. By clicking on the right tab you can see the Gumbel distribution from which this population originally started their skills with. Note that when running the code, the *logspline* line may not be exactly accurate as it is an estimate curve that may not align precisely with the bins of the histogram.
+
+We used the **sample** command to sample the Gumbel distribution *x* to get the $z$ values for each agent.
+
+A particular agent's skill level can be assessed using standard data frame indexing. Say we want to view agent 5's $z$ skill value $z_5$:
+```{r}
+agent$skill_z[5]
+
+```
+
+We can check that the skill value for agent 5 is in fact the value reported from this index call by looking at the **head** argument of code above.
+
+
+The above code specifies the starting baseline skill set $\bar{z}$ of our first generation. Next we need to properly compute and extract the $\bar{z}$ from this data frame and place it into an output data frame for us to track the $\bar{z}$ skill level for this generational time step:
+
+```{r}
+
+output <- data.frame(zbar = rep(NA, t_max)) #Generates an output dataframe for zbar
+
+output$zbar[1] <- mean(agent$skill_z) #compute zbar value and send it to the output dataframe
+
+head(output) #To view the first output value for generation t = 1. Others will be blank.
+
+
+```
+
+Here, we computed the mean $\bar{z}$ cultural skill of the population. We then sent it to an output data frame.
+
+Great, we have that sorted now for generation t = 1. Now we must deal with transmission and generational turn over! Furthermore, we must order the skill values obtained in descending order, so that agents of the generation t = 2:t_max will copy the highest performing individual $z_h$.
+
+```{r}
+
+previous_agent <- agent #Here we specify that generation 1 becomes senior generation
+
+previous_agento <- previous_agent[order(-previous_agent$skill_z), ] #We order the trait values in decending order to generate transmission biases.
+
+previous_agento.dat <- as.data.frame(previous_agento) #Change back to data.frame format for ease of interpretation.
+
+names = c("skill_z")
+names(previous_agento.dat) = names
+
+head(previous_agento.dat) #Check that the zh value is at the top of the ordered data frame.
+
+```
+
+Here we pass over agents from generation t = 1 into *previous_agent* status, and then we order these agents to emulate skill biased transmission. With ordering sorted, we now need to generate sampling from a Gumbel distribution based on the best performance of individual $z_h$:
+
+```{r}
+
+alpha = 6 #Set alpha parameter to 9
+
+location = previous_agento[1] - alpha #specifies that mode of the gumbel distribution should be the best model - alpha
+
+beta = 1
+
+agent = revd(N, loc = location, scale = beta, shape = 0) #We use the extRemes package to produce a Gumbel distribution sample that becomes the new generation of agents with z values.
+
+hist(agent,prob=T,xlab="z_i drawn from Gumbel (location = -alpha,scale = beta, shape =0)",main="Gumbel Distribution",ylab="f(z)",font=2,family="serif",font.lab=2,cex.lab=1.5)
+plot(logspline(agent),add=T)
+abline(v=previous_agento[1], col="red", lwd=3, lty=2) #Value of model z_h
+
+agent <- as.data.frame(agent) #Change back to data.frame format for ease of interpretation.
+
+names = c("skill_z")
+names(agent) = names
+
+head(agent) #inspect generation t = 2
+
+```
+
+With the second generation established, we need to repeat the transfer of the $\bar{z}$ value to the output and repeat this entire process encapsulated in the above two chunks of code 2 to $t_{max}$ times. We will achieve this goal with a **for-loop** argument.
+
+In the below chunk, several iterative re-runs are used to emulate independent populations undergoing cumulative cultural evolution with the same starting parameters. The maximum number of model iterations is denoted by $r_{max}$. We also finalise all the code into a single function *CollectiveBrain* using the **function** argument, and this is so named for the effect that Henrich's model (2004) produces; the *collective brain effect*.
+
+```{r}
+CollectiveBrain <- function(N, t_max, r_max, alpha, beta){
+  
+  output <- as.data.frame(matrix(NA,t_max,r_max))  # create a matrix with t_max rows and r_max columns, filled with NAs, then convert to data.frame
+  
+  names(output) <- paste("run", 1:r_max, sep="")  # purely cosmetic: rename the columns with run1, run2 etc.
+  
+  for (r in 1:r_max) {
+    
+    x = revd(N,loc=0,scale=beta,shape=0) #Starting cultural skills of t_1 population
+    
+   agent <- as.data.frame(x, row.names = NULL, optional = FALSE) #Assign values to each agent.
+
+names = c("skill_z") #Label the skill_z value column.
+names(agent) = names
+    
+    output[1,r] <- mean(agent$skill_z)
+    
+    for (t in 2:t_max) {
+      
+      previous_agent <- agent #Here we specify that generation 1 becomes senior generation
+      
+      previous_agento <- previous_agent[order(-previous_agent$skill_z), ] #We order the trait values in decending order to generate transmission biases.
+      
+      previous_agento.dat <- as.data.frame(previous_agento) #Change back to data.frame format for ease of interpretation.
+      
+      names = c("skill_z")
+      names(previous_agento.dat) = names
+      
+      location = previous_agento[1] - alpha #specifies that mode of the gumbel distribution should be the best model - alpha
+      
+      agent = revd(N, loc = location, scale = beta, shape = 0) #We use the extRemes package to produce Gumbel distribution to sample next generation of traits.
+      
+      agent <- as.data.frame(agent) #Change back to data.frame format for ease of interpretation.
+      
+      names(agent) = names
+      
+      output[t,r] <- mean(agent$skill_z) #specifies output transfer for all subsequent generations.
+      
+      
+    }#End of temporal for loop
+    
+  }#End of runs for loop
+  
+  plot(rowMeans(output), type = 'l', ylab = "Mean Cultural Trait Skill", xlab = "Generation", lwd = 3, main = paste("N = ", N, ", alpha = ", alpha, ", beta = ", beta, sep = "")) #A plot for the change in zbar over generations.
+  
+  for (r in 1:r_max) {  
+    
+    lines(output[,r], type = 'l')  # add lines for each run, up to r_max
+    
+  }
+  
+  output  # export data from function
+  
+  
+} #End of collective brain function
+
+
+```
+
+Now we can have a go at setting parameters of the model:
+
+```{r}
+CollectiveBrain(N = 100, t_max = 100, r_max = 5, alpha = 6, beta = 1)
+```
+Oh no! Observe these results. After 100 generations the mean trait skill, $\bar{z}$ declined to -80. This is severe maladaptive cultural knowledge loss. But why might this be? Could this be a Tasmania effect because the population size is not adequate?
+
+Fortunately, thanks to Henrich's (2004) model, we can compute the exact threshold, $N^*$, using the equation: $N^* > e^{\left(\frac{\alpha}{\beta} - \epsilon\right)}$.
+
+In the above chunk of code we set the following parameters for cultural skill complexity: $\alpha = 6, \beta = 1$, a ratio of $6/1$. Using Henrich's equation we can compute $N^*$ for these parameters of the Gumbel distribution:
+
+```{r}
+
+#Example test of this ABM against Henrich's model
+
+nl = exp(1) #base of the natural logarithm
+alpha = 6
+beta = 1
+epsilon= -digamma(1) #Euler-gamma constant
+
+#We use this equation to predict N*, effective population size for the above alpha and beta values
+
+nl^(alpha/beta-epsilon)
+
+```
+
+Using this equation we discover that $N^* \approx 227$. So lets reset the ABM for 227 precisely:
+
+```{r}
+CollectiveBrain(N = 227, t_max = 100, r_max = 5, alpha = 6, beta = 1)
+
+```
+
+Some cumulative evolution, but very unstable and very noisy. Run this several times and, in certain instantiations, accumulation occurs, while in others loss occurs. Lets set $r_max$ for 30 so that we can have better power and potentially use the central limit theorem.
+
+```{r}
+CollectiveBrain(N = 227, t_max = 100, r_max = 30, alpha = 6, beta = 1)
+
+```
+
+As can be seen from the dark line, across several independent cultural lineages, there is very little cumulative cultural evolution and it could go either way. Try running the model several times, the results are inconsistant. That is why the protocol chosen for establishing $N^*$ will be running the model 5 times with 30 iterations each time. And, only 5/5 instances of $\bar{z}>0$ will be satisifactory.
+
+What if we push $N > N^*$? Say 235?
+
+```{r}
+CollectiveBrain(N = 235, t_max = 100, r_max = 30, alpha = 6, beta = 1)
+
+```
+
+We are now getting cumulative cultural evolution in 5/5 just as Henrich predicts, but with a lot of noise injected into the data. This noise is to be expected with ABMs, and ABMs that have been based on Henrich's assumptions also exhibit noise and have to take averages across population iterations.
+
+let's be sure:
+```{r}
+CollectiveBrain(N = 400, t_max = 100, r_max = 30, alpha = 6, beta = 1)
+```
+
+$\bar{z}$ of 50 or more after 100 generations. Beautiful.
+
+
+
+###References
+
+Henrich, J. (2004). Demography and Cultural Evolution: How Adaptive Cultural Processes can Produce Maladaptive Losses: The Tasmanian Case. *American Antiquity* , 69 (2), 197-214.
+
